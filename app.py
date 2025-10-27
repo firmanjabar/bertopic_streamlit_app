@@ -1,4 +1,4 @@
-# app.py (patched for small datasets & robust visuals)
+# app.py (patched: remove reduce_outliers kwarg; call reduce_outliers after fit)
 import streamlit as st
 import pandas as pd
 from bertopic import BERTopic
@@ -85,7 +85,6 @@ if st.button("🚀 Fit Model"):
             hdbscan_model=hdbscan_model,
             calculate_probabilities=True,
             low_memory=low_memory,
-            reduce_outliers=True,   # pull some -1 points to nearest topic
             verbose=True
         )
 
@@ -93,6 +92,12 @@ if st.button("🚀 Fit Model"):
             topics, probs = topic_model.fit_transform(docs, timestamps=dates.dt.to_pydatetime().tolist())
         else:
             topics, probs = topic_model.fit_transform(docs)
+
+        # Post-processing: try to reduce outliers (-1) to nearest topics
+        try:
+            topics = topic_model.reduce_outliers(docs, topics)  # strategy="c-tfidf" by default
+        except Exception as e:
+            st.warning(f"reduce_outliers skipped: {e}")
 
     st.success("Done.")
     info = topic_model.get_topic_info()
