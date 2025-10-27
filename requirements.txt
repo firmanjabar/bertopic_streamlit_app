@@ -1,0 +1,8 @@
+bertopic[visualization]>=0.16
+sentence-transformers>=2.7
+umap-learn>=0.5
+hdbscan>=0.8
+scikit-learn>=1.4
+pandas>=2.0
+plotly>=5.15
+streamlit>=1.38
