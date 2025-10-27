@@ -1,9 +1,13 @@
-# app.py
+# app.py (patched for BERTopic: remove unsupported 'seed' kwarg; add UMAP/HDBSCAN seeds)
 import streamlit as st
 import pandas as pd
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
+from umap import UMAP
+import hdbscan
+import numpy as np
+import random
 
 st.set_page_config(page_title="BERTopic Visual Demo", page_icon="🧵", layout="wide")
 st.title("🧵 BERTopic — Topic Modeling Demo (Multilingual)")
@@ -47,19 +51,28 @@ if date_col != "(None)":
 st.markdown("---")
 st.subheader("2) Run BERTopic")
 if st.button("🚀 Fit Model"):
+    # Set seeds for reproducibility
+    np.random.seed(int(seed))
+    random.seed(int(seed))
+
     with st.spinner("Building model..."):
         embedder = SentenceTransformer(model_name)
         vectorizer_model = CountVectorizer(ngram_range=(1,2), stop_words=None)
+
+        # Configure UMAP/HDBSCAN with random_state/min_cluster_size
+        umap_model = UMAP(n_neighbors=15, n_components=5, metric="cosine", random_state=int(seed), low_memory=low_memory)
+        hdbscan_model = hdbscan.HDBSCAN(min_cluster_size=int(min_topic_size), metric="euclidean",
+                                        cluster_selection_method="eom", prediction_data=True)
 
         topic_model = BERTopic(
             embedding_model=embedder,
             vectorizer_model=vectorizer_model,
             language=language,
-            min_topic_size=min_topic_size,
+            umap_model=umap_model,
+            hdbscan_model=hdbscan_model,
             calculate_probabilities=True,
             low_memory=low_memory,
-            verbose=True,
-            seed=seed
+            verbose=True
         )
 
         if dates is not None:
@@ -95,7 +108,6 @@ if st.button("🚀 Fit Model"):
         except Exception as e:
             st.warning(f"topics_over_time failed: {e}")
 
-    # download
     st.markdown("### Download topic_info.csv")
     st.download_button("⬇️ Download", data=info.to_csv(index=False).encode("utf-8"),
                        file_name="topic_info.csv", mime="text/csv")
